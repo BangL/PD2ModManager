@@ -31,8 +31,8 @@ namespace PD2ModManager {
         private const int pd2AddID = 218620;
         private const string UpdatesAPIPath = "http://api.paydaymods.com/updates/retrieve/?";
         private const string UpdatesDownloadURL = "http://download.paydaymods.com/download/latest/{0}";
-        //private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/{0}";
-        //private const string ModsInfoUrl = "http://paydaymods.com/mods/{0}/{1}";
+        private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/{0}";
+        //private const string ModsInfoUrl = "http://paydaymods.com/mods/{0}/{1}"; // TODO: Any chance to get these {0} id's from api?
         
         private string dirMods;
         private string dirModOverrides;
@@ -283,7 +283,7 @@ namespace PD2ModManager {
                 MessageBox.Show(string.Format("mod \"{0}\" updated successfuly.", mod.name));
 
                 btnUpdateAll.IsEnabled = true;
-                btnUpdateMod.IsEnabled = true;
+                btnUpdateMod.IsEnabled = (dataGrid.SelectedItems.Count >= 1);
             } catch (Exception ex) {
                 err.Log(ex);
             }
@@ -309,7 +309,7 @@ namespace PD2ModManager {
                 MessageBox.Show("All mods updated successfuly.");
 
                 btnUpdateAll.IsEnabled = true;
-                btnUpdateMod.IsEnabled = true;
+                btnUpdateMod.IsEnabled = (dataGrid.SelectedItems.Count >= 1);
             } catch (Exception ex) {
                 err.Log(ex);
             }
@@ -343,24 +343,48 @@ namespace PD2ModManager {
 
         private void dataGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) {
             try {
-                if (dataGrid.SelectedItems.Count == 1) {
-                    ModInfo entry = (ModInfo) dataGrid.SelectedItem;
-                    switch (entry.state) {
-                        case UpdateState.LocalOnly:
-                            btnUpdateMod.Content = "Update";
-                            btnUpdateMod.IsEnabled = false;
-                            break;
-                        case UpdateState.Update:
-                            btnUpdateMod.Content = "Update";
-                            btnUpdateMod.IsEnabled = true;
-                            break;
-                        case UpdateState.UpToDate:
-                            btnUpdateMod.Content = "Reinstall";
-                            btnUpdateMod.IsEnabled = true;
-                            break;
+                btnUpdateMod.IsEnabled = false;
+                btnUpdateMod.Content = "Update";
+                if (dataGrid.SelectedItems.Count >= 1) {
+
+                    // refresh update button
+                    int modsToUpdate = 0;
+                    int modsToReinstall = 0;
+                    foreach (ModInfo mod in dataGrid.SelectedItems) {
+                        switch (mod.state) {
+                            case UpdateState.Update:
+                                modsToUpdate++;
+                                break;
+                            case UpdateState.UpToDate:
+                                modsToReinstall++;
+                                break;
+                        }
                     }
-                } else {
-                    btnUpdateMod.IsEnabled = false;
+                    if (modsToReinstall > 0 || modsToUpdate > 0) {
+                        btnUpdateMod.IsEnabled = true;
+                        if (modsToReinstall > 0 && modsToUpdate > 0) {
+                            btnUpdateMod.Content = string.Format("Update/Reinstall {0} mod{1}", modsToUpdate + modsToReinstall, modsToUpdate + modsToReinstall > 1 ? "s" : "");
+                        } else if (modsToReinstall > 0) {
+                            btnUpdateMod.Content = string.Format("Reinstall {0} mod{1}", modsToReinstall, modsToReinstall > 1 ? "s" : "");
+                        } else if (modsToUpdate > 0) {
+                            btnUpdateMod.Content = string.Format("Update {0} mod{1}", modsToUpdate, modsToUpdate > 1 ? "s" : "");
+                        }
+                    }
+
+                    // get web view for first selected mod
+                    foreach (ModInfo mod in dataGrid.SelectedItems) {
+                        lblModName.Visibility = Visibility.Hidden;
+                        webChangelog.Visibility = Visibility.Hidden;
+                        lblChangesheader.Content = "No Data";
+                        if (mod.state != UpdateState.LocalOnly) {
+                            webChangelog.Source = new Uri(string.Format(UpdatesNotesUrl, mod.identifier));
+                            lblModName.Visibility = Visibility.Visible;
+                            webChangelog.Visibility = Visibility.Visible;
+                            lblChangesheader.Content = "Changelog:";
+                            lblModName.Content = mod.name;
+                            break;
+                        }
+                    }
                 }
             } catch (Exception ex) {
                 err.Log(ex);

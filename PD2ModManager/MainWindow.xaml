@@ -5,42 +5,53 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:PD2ModManager"
         mc:Ignorable="d"
-        Title="Payday2 Mod Manager" Height="350" Width="525" Closing="Window_Closing">
+        Title="Payday2 Mod Manager" Height="622.59" Width="993.044" Closing="Window_Closing">
     <Grid>
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
-                <RowDefinition Height="5" />
-                <RowDefinition Height="59" />
+                <RowDefinition Height="48" />
             </Grid.RowDefinitions>
-            <DataGrid ItemsSource="{Binding}" x:Name="dataGrid" Margin="10,10,10,5" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionChanged="dataGrid_SelectionChanged">
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Name" Binding="{Binding name}" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Identifier" Binding="{Binding identifier}" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Revision" Binding="{Binding revision}" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Available" Binding="{Binding available}" IsReadOnly="True"/>
-                    <DataGridTextColumn Header="Date" Binding="{Binding date}" IsReadOnly="True"/>
-                </DataGrid.Columns>
-                <DataGrid.RowStyle>
-                    <Style TargetType="{x:Type DataGridRow}">
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding state}" Value="Offline">
-                                <Setter Property="Foreground" Value="Black"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding state}" Value="Update">
-                                <Setter Property="Foreground" Value="Red"/>
-                            </DataTrigger>
-                            <DataTrigger Binding="{Binding state}" Value="UpToDate">
-                                <Setter Property="Foreground" Value="Green"/>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </DataGrid.RowStyle>
-            </DataGrid>
-            <GridSplitter Grid.Row="1" VerticalAlignment="Stretch" Grid.Column="0" HorizontalAlignment="Stretch"/>
-            <Button x:Name="btnRefresh" Content="Refresh" HorizontalAlignment="Left" Height="32" Margin="10,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnRefresh_Click"/>
-            <Button x:Name="btnUpdateAll" Content="Update All" HorizontalAlignment="Left" Height="32" Margin="140,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateAll_Click"/>
-            <Button x:Name="btnUpdateMod" Content="Update" HorizontalAlignment="Left" Height="32" Margin="270,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateMod_Click" IsEnabled="False" />
+            <Button x:Name="btnRefresh" Content="Refresh" HorizontalAlignment="Left" Height="32" Margin="10,6,0,0" Grid.Row="1" VerticalAlignment="Top" Width="125" Click="btnRefresh_Click"/>
+            <Button x:Name="btnUpdateAll" Content="Update All" HorizontalAlignment="Left" Height="32" Margin="140,6,0,0" Grid.Row="1" VerticalAlignment="Top" Width="125" Click="btnUpdateAll_Click"/>
+            <Button x:Name="btnUpdateMod" Content="Update" HorizontalAlignment="Left" Height="32" Margin="270,6,0,0" Grid.Row="1" VerticalAlignment="Top" Width="151" Click="btnUpdateMod_Click" IsEnabled="False" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="5" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <DataGrid ItemsSource="{Binding}" x:Name="dataGrid" Margin="10,10,5,10" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionChanged="dataGrid_SelectionChanged">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Name" Binding="{Binding name}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Identifier" Binding="{Binding identifier}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Revision" Binding="{Binding revision}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Available" Binding="{Binding available}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Date" Binding="{Binding date}" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                    <DataGrid.RowStyle>
+                        <Style TargetType="{x:Type DataGridRow}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding state}" Value="Offline">
+                                    <Setter Property="Foreground" Value="Black"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding state}" Value="Update">
+                                    <Setter Property="Foreground" Value="Red"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding state}" Value="UpToDate">
+                                    <Setter Property="Foreground" Value="Green"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                </DataGrid>
+                <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Width="5"/>
+                <Grid Grid.Column="2">
+                    <WebBrowser x:Name="webChangelog" Margin="5,74,10,10"/>
+                    <Label x:Name="lblModName" Content="" Height="36" Margin="10,10,10,0" VerticalAlignment="Top" FontSize="18"/>
+                    <Label x:Name="lblChangesheader" Content="Latest Changes:" Height="28" Margin="10,46,10,0" VerticalAlignment="Top" FontSize="12"/>
+                </Grid>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
