@@ -160,12 +160,16 @@ namespace PD2ModManager {
                             ModInfo modInfo = null;
                             try {
                                 modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
-                            } catch {
-                                // workarounds for invalid json files
-                                json = Regex.Replace(json, "(\"(?:[^\"\\\\]|\\\\.)*\")|\\s+", "$1"); // minify json
-                                json = json.Replace("\",}", "\"}"); // remove commas at the end of arrays
-                                json = json.Replace("\"}]\"", "\"}],\""); // insert commas after arrays, if there are more values following
-                                modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
+                            } catch (Exception ex) {
+                                try {
+                                    // workarounds for invalid json files
+                                    json = Regex.Replace(json, "(\"(?:[^\"\\\\]|\\\\.)*\")|\\s+", "$1"); // minify json
+                                    json = json.Replace("\",}", "\"}"); // remove commas at the end of arrays
+                                    json = json.Replace("\"}]\"", "\"}],\""); // insert commas after arrays, if there are more values following
+                                    modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
+                                } catch {
+                                    err.Log(new ApplicationException(string.Format("Skipping mod \"{0}\" due to invalid json in its mod.txt." + Environment.NewLine + "Parser Error: ", modName, ex.Message), ex));
+                                }
                             }
                             if (modInfo != null) {
                                 modInfo.mod = modName;
