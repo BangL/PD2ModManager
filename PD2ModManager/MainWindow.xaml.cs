@@ -168,7 +168,7 @@ namespace PD2ModManager {
                                     json = json.Replace("\"}]\"", "\"}],\""); // insert commas after arrays, if there are more values following
                                     modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
                                 } catch {
-                                    err.Log(new ApplicationException(string.Format("Skipping mod \"{0}\" due to invalid json in its mod.txt." + Environment.NewLine + "Parser Error: ", modName, ex.Message), ex));
+                                    err.Log(new ApplicationException(string.Format("Skipping mod \"{0}\" due to invalid json in its mod.txt." + Environment.NewLine + "Parser Error: {1}", modName, ex.Message), ex));
                                 }
                             }
                             if (modInfo != null) {
