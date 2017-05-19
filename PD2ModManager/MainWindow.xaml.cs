@@ -4,9 +4,11 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -37,6 +39,10 @@ namespace PD2ModManager {
 
         public MainWindow() {
             InitializeComponent();
+            
+            // show version in header
+            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+            this.Title = string.Format("{0} v{1}.{2}", this.Title, fvi.FileMajorPart, fvi.FileMinorPart);
 
             // Get PD2 Path
             string dirPayday2 = GetPD2Path(GetSteamPath());
