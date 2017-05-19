@@ -31,7 +31,8 @@ namespace PD2ModManager {
         private const int pd2AddID = 218620;
         private const string UpdatesAPIPath = "http://api.paydaymods.com/updates/retrieve/?";
         private const string UpdatesDownloadURL = "http://download.paydaymods.com/download/latest/{0}";
-        private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/{0}";
+        //private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/{0}";
+        //private const string ModsInfoUrl = "http://paydaymods.com/mods/{0}/{1}";
         
         private string dirMods;
         private string dirModOverrides;
@@ -41,13 +42,22 @@ namespace PD2ModManager {
 
         public MainWindow() {
             InitializeComponent();
-
             err = new ErrorHandler();
-
             try {
                 // show version in header
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
                 this.Title = string.Format("{0} v{1}.{2}", this.Title, fvi.FileMajorPart, fvi.FileMinorPart);
+
+                // Window State/Positon
+                if (!Properties.Settings.Default.FirstStart) {
+                    this.Top = Properties.Settings.Default.Top;
+                    this.Left = Properties.Settings.Default.Left;
+                    this.Height = Properties.Settings.Default.Height;
+                    this.Width = Properties.Settings.Default.Width;
+                    if (Properties.Settings.Default.Maximized) {
+                        this.WindowState = WindowState.Maximized;
+                    }
+                }
 
                 // Get PD2 Path
                 string dirPayday2 = GetPD2Path(GetSteamPath());
@@ -166,6 +176,10 @@ namespace PD2ModManager {
                                     json = Regex.Replace(json, "(\"(?:[^\"\\\\]|\\\\.)*\")|\\s+", "$1"); // minify json
                                     json = json.Replace("\",}", "\"}"); // remove commas at the end of arrays
                                     json = json.Replace("\"}]\"", "\"}],\""); // insert commas after arrays, if there are more values following
+
+                                    // TODO: this one would also replace empty strings.. need some regex here
+                                    //json = json.Replace("\"\"", "\",\""); // insert commas after values, if there are more values following
+
                                     modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
                                 } catch {
                                     err.Log(new ApplicationException(string.Format("Skipping mod \"{0}\" due to invalid json in its mod.txt." + Environment.NewLine + "Parser Error: {1}", modName, ex.Message), ex));
@@ -334,23 +348,52 @@ namespace PD2ModManager {
                     switch (entry.state) {
                         case UpdateState.LocalOnly:
                             btnUpdateMod.Content = "Update";
-                            btnUpdateMod.Visibility = Visibility.Hidden;
+                            btnUpdateMod.IsEnabled = false;
                             break;
                         case UpdateState.Update:
                             btnUpdateMod.Content = "Update";
-                            btnUpdateMod.Visibility = Visibility.Visible;
+                            btnUpdateMod.IsEnabled = true;
                             break;
                         case UpdateState.UpToDate:
                             btnUpdateMod.Content = "Reinstall";
-                            btnUpdateMod.Visibility = Visibility.Visible;
+                            btnUpdateMod.IsEnabled = true;
                             break;
                     }
                 } else {
-                    btnUpdateMod.Visibility = Visibility.Hidden;
+                    btnUpdateMod.IsEnabled = false;
                 }
             } catch (Exception ex) {
                 err.Log(ex);
             }
+        }
+
+        private void btnRefresh_Click(object sender, RoutedEventArgs e) {
+            try {
+                RefreshModList();
+            } catch (Exception ex) {
+                err.Log(ex);
+            }
+        }
+
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e) {
+
+            Properties.Settings.Default.FirstStart = false;
+
+            if (WindowState == WindowState.Maximized) {
+                Properties.Settings.Default.Top = RestoreBounds.Top;
+                Properties.Settings.Default.Left = RestoreBounds.Left;
+                Properties.Settings.Default.Height = RestoreBounds.Height;
+                Properties.Settings.Default.Width = RestoreBounds.Width;
+                Properties.Settings.Default.Maximized = true;
+            } else {
+                Properties.Settings.Default.Top = this.Top;
+                Properties.Settings.Default.Left = this.Left;
+                Properties.Settings.Default.Height = this.Height;
+                Properties.Settings.Default.Width = this.Width;
+                Properties.Settings.Default.Maximized = false;
+            }
+            
+            Properties.Settings.Default.Save();
         }
     }
 }

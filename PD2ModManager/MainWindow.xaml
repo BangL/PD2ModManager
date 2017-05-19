@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:PD2ModManager"
         mc:Ignorable="d"
-        Title="Payday2 Mod Manager" Height="350" Width="525">
+        Title="Payday2 Mod Manager" Height="350" Width="525" Closing="Window_Closing">
     <Grid>
         <Grid>
             <Grid.RowDefinitions>
@@ -38,8 +38,9 @@
                 </DataGrid.RowStyle>
             </DataGrid>
             <GridSplitter Grid.Row="1" VerticalAlignment="Stretch" Grid.Column="0" HorizontalAlignment="Stretch"/>
-            <Button x:Name="btnUpdateAll" Content="Update All" HorizontalAlignment="Left" Height="32" Margin="10,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateAll_Click"/>
-            <Button x:Name="btnUpdateMod" Content="Update" HorizontalAlignment="Left" Height="32" Margin="140,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateMod_Click" Visibility="Hidden" />
+            <Button x:Name="btnRefresh" Content="Refresh" HorizontalAlignment="Left" Height="32" Margin="10,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnRefresh_Click"/>
+            <Button x:Name="btnUpdateAll" Content="Update All" HorizontalAlignment="Left" Height="32" Margin="140,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateAll_Click"/>
+            <Button x:Name="btnUpdateMod" Content="Update" HorizontalAlignment="Left" Height="32" Margin="270,5,0,0" Grid.Row="2" VerticalAlignment="Top" Width="125" Click="btnUpdateMod_Click" IsEnabled="False" />
         </Grid>
     </Grid>
 </Window>
