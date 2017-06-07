@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace PD2ModManager {
 
@@ -36,7 +35,7 @@ namespace PD2ModManager {
 
         public string identifier {
             get {
-                if (main_update != null) {
+                if (state != UpdateState.Git && main_update != null) {
                     return main_update.identifier;
                 }
                 return "";
@@ -45,18 +44,39 @@ namespace PD2ModManager {
 
         public string revision {
             get {
-                if (main_update != null) {
+                if (state != UpdateState.Git && main_update != null) {
                     return main_update.revision;
                 }
                 return "";
             }
         }
+
+        public string dateString {
+            get {
+                if (date > DateTime.MinValue) {
+                    return date.ToString();
+                } else {
+                    return "";
+                }
+            }
+        }
+
+        public string stateString {
+            get {
+                return state.GetDescription();
+            }
+        }
     }
 
     public enum UpdateState {
+        [Description("Local mod")]
         LocalOnly = 0,
+        [Description("Up to date")]
         UpToDate = 1,
-        Update = 2
+        [Description("Update available")]
+        Update = 2,
+        [Description("Git managed")]
+        Git = 4
     }
 
     public class ModInfoUpdate {

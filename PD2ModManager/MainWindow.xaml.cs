@@ -1,4 +1,5 @@
 ﻿using Gameloop.Vdf;
+using LibGit2Sharp;
 using Microsoft.Win32;
 using Newtonsoft.Json;
 using System;
@@ -9,18 +10,9 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace PD2ModManager {
     /// <summary>
@@ -30,8 +22,8 @@ namespace PD2ModManager {
 
         private const int pd2AddID = 218620;
         private const string UpdatesAPIPath = "http://api.paydaymods.com/updates/retrieve/?";
-        private const string UpdatesDownloadURL = "http://download.paydaymods.com/download/latest/{0}";
-        private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/{0}";
+        private const string UpdatesDownloadURL = "http://download.paydaymods.com/download/latest/";
+        private const string UpdatesNotesUrl = "http://download.paydaymods.com/download/patchnotes/";
         //private const string ModsInfoUrl = "http://paydaymods.com/mods/{0}/{1}"; // TODO: Any chance to get these {0} id's from api?
         
         private string dirMods;
@@ -46,7 +38,7 @@ namespace PD2ModManager {
             try {
                 // show version in header
                 FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-                this.Title = string.Format("{0} v{1}.{2}", this.Title, fvi.FileMajorPart, fvi.FileMinorPart);
+                this.Title = $"{this.Title} v{fvi.FileMajorPart}.{fvi.FileMinorPart}";
 
                 // Window State/Positon
                 if (!Properties.Settings.Default.FirstStart) {
@@ -65,12 +57,12 @@ namespace PD2ModManager {
                     throw new ApplicationException("PAYDAY 2 not found.");
                 }
 
-                dirMods = System.IO.Path.Combine(dirPayday2, "mods");
+                dirMods = Path.Combine(dirPayday2, "mods");
                 if (!Directory.Exists(dirMods)) {
                     Directory.CreateDirectory(dirMods);
                 }
 
-                dirModOverrides = System.IO.Path.Combine(dirPayday2, "assets", "mod_overrides");
+                dirModOverrides = Path.Combine(dirPayday2, "assets", "mod_overrides");
                 if (!Directory.Exists(dirModOverrides)) {
                     Directory.CreateDirectory(dirModOverrides);
                 }
@@ -118,7 +110,7 @@ namespace PD2ModManager {
                 string url = UpdatesAPIPath;
                 int i = 0;
                 foreach (ModInfoUpdate update in updates) {
-                    url = string.Format("{0}mod[{1}]={2}{3}", url, i, update.identifier, updates.Count - 1 > i ? "&" : "");
+                    url = $"{url}mod[{i}]={update.identifier}{(updates.Count - 1 > i ? "&" : "")}";
                     i++;
                 }
 
@@ -127,15 +119,25 @@ namespace PD2ModManager {
 
                 // refresh update state
                 foreach (ModInfo mod in mods) {
-                    if (!string.IsNullOrEmpty(mod.identifier)) {
-                        if (updateInfos.ContainsKey(mod.identifier)) {
-                            UpdateInfo update = updateInfos[mod.identifier];
-                            mod.available = update.revision;
-                            mod.date = update.date;
-                            if (mod.revision != update.revision) {
-                                mod.state = UpdateState.Update;
-                            } else {
-                                mod.state = UpdateState.UpToDate;
+                    if (mod.state != UpdateState.Git) {
+                        if (!string.IsNullOrEmpty(mod.identifier)) {
+                            if (updateInfos.ContainsKey(mod.identifier)) {
+                                UpdateInfo update = updateInfos[mod.identifier];
+                                mod.available = update.revision;
+                                mod.date = update.date;
+                                if (mod.revision != update.revision) {
+                                    mod.state = UpdateState.Update;
+                                } else {
+                                    mod.state = UpdateState.UpToDate;
+                                }
+                            }
+                        }
+                    } else {
+                        string path = Path.Combine(dirMods, mod.mod);
+                        using (var repo = new Repository(path)) {
+                            foreach (Remote remote in repo.Network.Remotes) {
+                                IEnumerable<string> refSpecs = remote.FetchRefSpecs.Select(x => x.Specification);
+                                Commands.Fetch(repo, remote.Name, refSpecs, null, "");
                             }
                         }
                     }
@@ -151,7 +153,9 @@ namespace PD2ModManager {
             try {
                 WebRequest request = WebRequest.Create(url);
                 request.Credentials = CredentialCache.DefaultCredentials;
-                return new StreamReader(request.GetResponse().GetResponseStream()).ReadToEnd();
+                using (StreamReader stream = new StreamReader(request.GetResponse().GetResponseStream())) {
+                    return stream.ReadToEnd();
+                }
             } catch (Exception ex) {
                 err.Log(ex);
                 return null;
@@ -162,8 +166,8 @@ namespace PD2ModManager {
             try {
                 ObservableCollection<ModInfo> result = new ObservableCollection<ModInfo>();
                 foreach (string fullDir in Directory.GetDirectories(dirMods)) {
-                    string modName = System.IO.Path.GetFileName(fullDir);
-                    string modTxt = System.IO.Path.Combine(fullDir, "mod.txt");
+                    string modName = Path.GetFileName(fullDir);
+                    string modTxt = Path.Combine(fullDir, "mod.txt");
                     if (File.Exists(modTxt)) {
                         using (TextReader reader = new StreamReader(modTxt)) {
                             string json = reader.ReadToEnd();
@@ -182,10 +186,13 @@ namespace PD2ModManager {
 
                                     modInfo = JsonConvert.DeserializeObject<ModInfo>(json);
                                 } catch {
-                                    err.Log(new ApplicationException(string.Format("Skipping mod \"{0}\" due to invalid json in its mod.txt." + Environment.NewLine + "Parser Error: {1}", modName, ex.Message), ex));
+                                    err.Log(new ApplicationException($"Skipping mod \"{modName}\" due to invalid json in its mod.txt." + Environment.NewLine + $"Parser Error: {ex.Message}", ex));
                                 }
                             }
                             if (modInfo != null) {
+                                if (Directory.Exists(Path.Combine(fullDir, ".git"))) {
+                                    modInfo.state = UpdateState.Git;
+                                }
                                 modInfo.mod = modName;
                                 result.Add(modInfo);
                             }
@@ -205,7 +212,7 @@ namespace PD2ModManager {
                 // Get Steam Library Folders
                 List<string> libraryFolders = new List<string>();
                 libraryFolders.Add(steamPath);
-                string libraryFoldersFile = System.IO.Path.Combine(steamPath, "SteamApps", "libraryfolders.vdf");
+                string libraryFoldersFile = Path.Combine(steamPath, "SteamApps", "libraryfolders.vdf");
                 if (File.Exists(libraryFoldersFile)) {
                     using (TextReader reader = new StreamReader(libraryFoldersFile)) {
                         VObject vLibFolders = (VObject) VdfConvert.Deserialize(reader.ReadToEnd()).Children().First().Value;
@@ -223,16 +230,16 @@ namespace PD2ModManager {
                 // Get PD2 Path
                 string pd2Path = string.Empty;
                 foreach (string libraryFolder in libraryFolders) {
-                    if (File.Exists(System.IO.Path.Combine(libraryFolder, "SteamApps", string.Format("appmanifest_{0}.acf", pd2AddID)))) {
-                        pd2Path = System.IO.Path.Combine(libraryFolder, "SteamApps", "common", "PAYDAY 2");
+                    if (File.Exists(Path.Combine(libraryFolder, "SteamApps", $"appmanifest_{pd2AddID}.acf"))) {
+                        pd2Path = Path.Combine(libraryFolder, "SteamApps", "common", "PAYDAY 2");
                     }
                 }
 
                 // Check PD2 Path
                 if (string.IsNullOrEmpty(pd2Path) || !Directory.Exists(pd2Path)) {
-                    throw new ApplicationException(string.Format("Invalid PAYDAY 2 Path: \"{0}\". Directory does not exist.", pd2Path));
+                    throw new ApplicationException($"Invalid PAYDAY 2 Path: \"{pd2Path}\". Directory does not exist.");
                 }
-                if (!File.Exists(System.IO.Path.Combine(pd2Path, "payday2_win32_release.exe"))) {
+                if (!File.Exists(Path.Combine(pd2Path, "payday2_win32_release.exe"))) {
                     throw new ApplicationException("payday2_win32_release.exe not found.");
                 }
             
@@ -246,7 +253,7 @@ namespace PD2ModManager {
         public static string GetSteamPath() {
 
             // Get Steam Path
-            string regPath = System.IO.Path.Combine("HKEY_LOCAL_MACHINE", "SOFTWARE", Is64bit?"Wow6432Node":"", "Valve", "Steam");
+            string regPath = Path.Combine("HKEY_LOCAL_MACHINE", "SOFTWARE", Is64bit?"Wow6432Node":"", "Valve", "Steam");
             string steamPath = (string) Registry.GetValue(regPath, "InstallPath", "");
 
             // Check Steam Path
@@ -254,9 +261,9 @@ namespace PD2ModManager {
                 throw new ApplicationException("Steam not found.");
             }
             if (!Directory.Exists(steamPath)) {
-                throw new ApplicationException(string.Format("Invalid Steam Path: \"{0}\". Directory does not exist.", steamPath));
+                throw new ApplicationException($"Invalid Steam Path: \"{steamPath}\". Directory does not exist.");
             }
-            if (!File.Exists(System.IO.Path.Combine(steamPath, "Steam.exe"))) {
+            if (!File.Exists(Path.Combine(steamPath, "Steam.exe"))) {
                 throw new ApplicationException("Steam.exe not found.");
             }
 
@@ -280,7 +287,7 @@ namespace PD2ModManager {
                 RefreshModList();
                 dataGrid.SelectedIndex = index;
 
-                MessageBox.Show(string.Format("mod \"{0}\" updated successfuly.", mod.name));
+                MessageBox.Show($"mod \"{mod.name}\" updated successfuly.");
 
                 btnUpdateAll.IsEnabled = true;
                 btnUpdateMod.IsEnabled = (dataGrid.SelectedItems.Count >= 1);
@@ -317,25 +324,47 @@ namespace PD2ModManager {
 
         private void DownloadAndInstallMod(ModInfo mod) {
             try {
-                // build url
-                string url = string.Format(UpdatesDownloadURL, mod.identifier );
+                if (mod.state != UpdateState.Git) {
+                    // build url
+                    string url = UpdatesDownloadURL + mod.identifier;
 
-                // create temp file
-                string tempfile = System.IO.Path.GetTempFileName();
+                    // create temp file
+                    string tempfile = Path.GetTempFileName();
 
-                // download latest mod zip
-                using (var client = new WebClient()) {
-                    client.DownloadFile(url, tempfile);
+                    // download latest mod zip
+                    using (var client = new WebClient()) {
+                        client.DownloadFile(url, tempfile);
+                    }
+
+                    // clean target dir
+                    Directory.Delete(Path.Combine(dirMods, mod.mod), true);
+
+                    // extract zip
+                    System.IO.Compression.ZipFile.ExtractToDirectory(tempfile, dirMods);
+
+                    // cleanup
+                    File.Delete(tempfile);
+                } else {
+
+                    /*
+                     * TODO
+                    
+                    //get remote branch list
+                    IEnumerable<Reference> references = Repository.ListRemoteReferences(Path.Combine(dirMods, mod.mod));
+                    IEnumerable<string> remoteBranches = references.Where(x => x.IsRemoteTrackingBranch).Select(x => x.CanonicalName.Replace("refs/remotes/", ""));
+                    foreach (string branch in remoteBranches) {
+
+                    }
+
+                    string path = Path.Combine(dirMods, mod.mod);
+                    using (var repo = new Repository(path)) {
+                        var branch = repo.Branches["origin/master"];
+                        if (branch != null) {
+                            Branch currentBranch = Commands.Checkout(repo, branch);
+                        }
+                    }
+                    */
                 }
-
-                // clean target dir
-                Directory.Delete(System.IO.Path.Combine(dirMods, mod.mod), true);
-
-                // extract zip
-                System.IO.Compression.ZipFile.ExtractToDirectory(tempfile, dirMods);
-
-                // cleanup
-                File.Delete(tempfile);
             } catch (Exception ex) {
                 err.Log(ex);
             }
@@ -363,11 +392,11 @@ namespace PD2ModManager {
                     if (modsToReinstall > 0 || modsToUpdate > 0) {
                         btnUpdateMod.IsEnabled = true;
                         if (modsToReinstall > 0 && modsToUpdate > 0) {
-                            btnUpdateMod.Content = string.Format("Update/Reinstall {0} mod{1}", modsToUpdate + modsToReinstall, modsToUpdate + modsToReinstall > 1 ? "s" : "");
+                            btnUpdateMod.Content = $"Update/Reinstall {modsToUpdate + modsToReinstall} mod{(modsToUpdate + modsToReinstall > 1 ? "s" : "")}";
                         } else if (modsToReinstall > 0) {
-                            btnUpdateMod.Content = string.Format("Reinstall {0} mod{1}", modsToReinstall, modsToReinstall > 1 ? "s" : "");
+                            btnUpdateMod.Content = $"Reinstall {modsToReinstall} mod{(modsToReinstall > 1 ? "s" : "")}";
                         } else if (modsToUpdate > 0) {
-                            btnUpdateMod.Content = string.Format("Update {0} mod{1}", modsToUpdate, modsToUpdate > 1 ? "s" : "");
+                            btnUpdateMod.Content = $"Update {modsToUpdate} mod{(modsToUpdate > 1 ? "s" : "")}";
                         }
                     }
 
@@ -375,13 +404,30 @@ namespace PD2ModManager {
                     foreach (ModInfo mod in dataGrid.SelectedItems) {
                         lblModName.Visibility = Visibility.Hidden;
                         webChangelog.Visibility = Visibility.Hidden;
+                        txtChangelog.Visibility = Visibility.Hidden;
                         lblChangesheader.Content = "No Data";
-                        if (mod.state != UpdateState.LocalOnly) {
-                            webChangelog.Source = new Uri(string.Format(UpdatesNotesUrl, mod.identifier));
+                        lblModName.Content = mod.name;
+                        if (mod.state != UpdateState.Git) {
+                            if (mod.state != UpdateState.LocalOnly) {
+                                webChangelog.Source = new Uri(UpdatesNotesUrl + mod.identifier);
+                                lblModName.Visibility = Visibility.Visible;
+                                webChangelog.Visibility = Visibility.Visible;
+                                lblChangesheader.Content = "Changelog:";
+                            }
+                            break;
+                        } else {
+                            txtChangelog.Text = "";
+                            using (Repository repo = new Repository(Path.Combine(dirMods, mod.mod))) {
+                                foreach (Commit c in repo.Commits.Take(10)) {
+                                    txtChangelog.Text += $"commit {c.Id}\n";
+                                    txtChangelog.Text += $"\tAuthor: {c.Author.Name} <{c.Author.Email}>\n";
+                                    txtChangelog.Text += $"\tDate:   {c.Author.When.ToString()}\n\n";
+                                    txtChangelog.Text += $"\t{c.Message.Replace("\n", "\n\t")}\n\n";
+                                }
+                            }
                             lblModName.Visibility = Visibility.Visible;
-                            webChangelog.Visibility = Visibility.Visible;
-                            lblChangesheader.Content = "Changelog:";
-                            lblModName.Content = mod.name;
+                            txtChangelog.Visibility = Visibility.Visible;
+                            lblChangesheader.Content = "Last 10 Commits (locally):";
                             break;
                         }
                     }

@@ -24,10 +24,23 @@
                 <DataGrid ItemsSource="{Binding}" x:Name="dataGrid" Margin="10,10,5,10" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionChanged="dataGrid_SelectionChanged">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Name" Binding="{Binding name}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Update State" Binding="{Binding stateString}" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Identifier" Binding="{Binding identifier}" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Revision" Binding="{Binding revision}" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Available" Binding="{Binding available}" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Date" Binding="{Binding date}" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="Local Version" Binding="{Binding revision}" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="{x:Type TextBlock}">
+                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Available Version" Binding="{Binding available}" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="{x:Type TextBlock}">
+                                    <Setter Property="HorizontalAlignment" Value="Right" />
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Last Update" Binding="{Binding dateString}" IsReadOnly="True"/>
                     </DataGrid.Columns>
                     <DataGrid.RowStyle>
                         <Style TargetType="{x:Type DataGridRow}">
@@ -50,6 +63,7 @@
                     <WebBrowser x:Name="webChangelog" Margin="5,74,10,10"/>
                     <Label x:Name="lblModName" Content="" Height="36" Margin="10,10,10,0" VerticalAlignment="Top" FontSize="18"/>
                     <Label x:Name="lblChangesheader" Content="Latest Changes:" Height="28" Margin="10,46,10,0" VerticalAlignment="Top" FontSize="12"/>
+                    <TextBox x:Name="txtChangelog" Margin="5,74,10,0" TextWrapping="Wrap"/>
                 </Grid>
             </Grid>
         </Grid>
